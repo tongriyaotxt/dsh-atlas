@@ -1,0 +1,66 @@
+{
+  "base": "kg-design",
+  "ops": [
+    {
+      "op": "add_node",
+      "pane": "L",
+      "id": "T17",
+      "title": "INR 隐式神经表示重构",
+      "kind": "recon",
+      "note": "Sitzmann et al. NeurIPS 2020, arXiv:2006.09661",
+      "fails": [
+        "每条序列需单独训练，流式场景不可行",
+        "谱偏置会平滑高频异常，尖峰被吃掉"
+      ]
+    },
+    {
+      "op": "add_node",
+      "pane": "L",
+      "id": "T18",
+      "title": "无失效条件的反例",
+      "kind": "recon",
+      "note": ""
+    },
+    {
+      "op": "add_edge",
+      "pane": "L",
+      "from": "T17",
+      "to": "T11",
+      "rel": "replaces",
+      "note": ""
+    },
+    {
+      "op": "add_edge",
+      "pane": "L",
+      "from": "T17",
+      "to": "T10",
+      "rel": "fails_when",
+      "note": "共享失效：训练集被污染时，两者都把异常学进表示"
+    },
+    {
+      "op": "link",
+      "design": "S6",
+      "tech": "T17"
+    },
+    {
+      "op": "annotate",
+      "pane": "L",
+      "target": "T11",
+      "field": "fails",
+      "value": "周期长度周级漂移 > 2h 时重构误差整体抬高，需滚动重估 s_window"
+    }
+  ],
+  "gaps": {
+    "certain": [
+      "INR 在单序列拟合精度上优于 AE（Sitzmann 2020 有消融）",
+      "Anomaly Transformer 与 TimesNet 在 <1e5 样本上都会过拟合"
+    ],
+    "uncertain": [
+      "你的『共享编码器』约束是否可放宽——这决定 INR 能否进入右侧 S6 的候选"
+    ],
+    "need_from_you": [
+      "训练阶段显存上限能否放宽到 8GB？（推理仍受 2GB 限制）",
+      "T17 若只能离线跑，能否接受它作为『回溯分析』而非在线检测？"
+    ]
+  }
+}

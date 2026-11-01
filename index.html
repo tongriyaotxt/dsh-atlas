@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>DSH Atlas · 科研知识图谱</title>
+<style>
+:root{
+  --bg:#f5f5f7; --surface:#ffffff; --surface2:#fbfbfd; --fill:#f0f0f3;
+  --ink:#1d1d1f; --dim:#6e6e73; --dim2:#86868b;
+  --line:#e8e8ed; --line2:#d2d2d7;
+  --accent:#0071e3; --accent-h:#0077ed; --accent-soft:#e8f2fd;
+  --err:#d70015; --err-soft:#fff5f5; --err-line:#ffd7d7;
+  --ok:#1d8f4e; --ok-soft:#f0faf3; --ok-line:#c6ebd4;
+  --warn:#b25000;
+  --stat:#5b7c99; --near:#7a8b4a; --recon:#9a6a3c; --prob:#8c5a86; --sup:#8e8e93;
+  --design:#0071e3;
+  --r:14px; --r-sm:9px;
+  --grid:rgba(0,0,0,.055);
+  --sh:0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  --sh-hi:0 2px 8px rgba(0,0,0,.07), 0 16px 40px rgba(0,0,0,.10);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","PingFang SC","Noto Sans SC",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000000; --surface:#1c1c1e; --surface2:#2c2c2e; --fill:#2c2c2e;
+    --ink:#f5f5f7; --dim:#98989d; --dim2:#8e8e93;
+    --line:#2c2c2e; --line2:#3a3a3c;
+    --accent:#0a84ff; --accent-h:#409cff; --accent-soft:#0d2a44;
+    --err:#ff453a; --err-soft:#2a1416; --err-line:#5c2222;
+    --ok:#32d74b; --ok-soft:#10281a; --ok-line:#1e4d2e;
+    --grid:rgba(255,255,255,.075);
+    --sh:0 1px 2px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.4);
+    --sh-hi:0 2px 8px rgba(0,0,0,.6), 0 16px 40px rgba(0,0,0,.55);
+    --stat:#7ba3c4; --near:#9db06a; --recon:#c08d55; --prob:#b579ad; --sup:#a1a1a6;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);font-size:13px;color:var(--ink);background:var(--bg);
+     overflow:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+header{height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;
+       background:rgba(255,255,255,.72);backdrop-filter:saturate(180%) blur(20px);
+       -webkit-backdrop-filter:saturate(180%) blur(20px);
+       border-bottom:1px solid var(--line);position:relative;z-index:20}
+@media (prefers-color-scheme: dark){
+  header{background:rgba(28,28,30,.72)}
+}
+header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:-.01em}
+header .tag{color:var(--dim2);font-size:11.5px;font-weight:400;letter-spacing:0}
+header .sp{flex:1}
+
+button{font-family:var(--font);font-size:12.5px;padding:6px 14px;border-radius:980px;
+       border:1px solid var(--line2);background:var(--surface);color:var(--ink);
+       cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .12s ease,box-shadow .18s ease;
+       white-space:nowrap}
+button:hover{background:var(--fill);border-color:var(--line2)}
+button:active{transform:scale(.97)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;
+       box-shadow:0 1px 3px rgba(0,113,227,.28)}
+button.primary:hover{background:var(--accent-h);border-color:var(--accent-h)}
+button.sm{padding:4px 11px;font-size:11.5px}
+button:disabled{opacity:.4;cursor:not-allowed}
+header input[type=search]{width:180px;padding:6px 12px;border-radius:980px;
+       border:1px solid transparent;background:var(--fill);font-size:12px;color:var(--ink);
+       transition:background .18s,border-color .18s,box-shadow .18s}
+header input[type=search]:focus{outline:none;background:var(--surface);
+       border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,113,227,.12)}
+
+main{display:flex;height:calc(100% - 56px - 28px)}
+.pane{flex:1;display:flex;flex-direction:column;min-width:0;
+      border-right:1px solid var(--line);background:var(--bg)}
+.pane:last-of-type{border-right:none}
+.pane-head{height:40px;display:flex;align-items:center;gap:8px;padding:0 16px;
+           background:rgba(255,255,255,.6);backdrop-filter:blur(12px);
+           border-bottom:1px solid var(--line);font-size:12.5px;font-weight:600;
+           letter-spacing:-.005em}
+@media (prefers-color-scheme: dark){
+  .pane-head{background:rgba(28,28,30,.6)}
+}
+.pane-head .tag{color:var(--dim2);font-size:11.5px;font-weight:400}
+.pane-head .sp{flex:1}
+
+svg{flex:1;width:100%;height:100%;display:block;
+    background-image:radial-gradient(circle, var(--grid) 1px, transparent 1px);
+    background-size:20px 20px;background-position:0 0;cursor:grab}
+svg.panning{cursor:grabbing}
+
+.node{cursor:move}
+.node rect.bg{fill:var(--surface);stroke:var(--line);stroke-width:1;
+    filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.05))}
+.node:hover rect.bg{stroke:var(--line2);filter:drop-shadow(0 3px 10px rgba(0,0,0,.09))}
+.node.sel{filter:drop-shadow(0 0 6px rgba(0,113,227,.35))}
+.node.sel rect.bg{stroke:var(--accent);stroke-width:2}
+.node.flag rect.bg{stroke:var(--err);stroke-width:1.6;stroke-dasharray:5 2.5}
+.node.link-target rect.bg{stroke:var(--accent);stroke-width:2.4;stroke-dasharray:6 3}
+.node text{pointer-events:none;user-select:none}
+.node .t1{font-size:12px;font-weight:600;fill:var(--ink);letter-spacing:-.005em}
+.node .t2{font-size:10px;fill:var(--dim2);letter-spacing:.01em}
+.node .dot{fill:var(--err);opacity:.9}
+.node .ref{fill:var(--accent);opacity:.75}
+body.linkmode{cursor:crosshair}
+
+.edge{fill:none;stroke-width:1.3;opacity:.8}
+.elbl{font-size:9.5px;pointer-events:none;letter-spacing:.02em;
+      paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round}
+
+aside{width:372px;background:rgba(255,255,255,.78);
+      backdrop-filter:saturate(180%) blur(24px);
+      -webkit-backdrop-filter:saturate(180%) blur(24px);
+      border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+@media (prefers-color-scheme: dark){
+  aside{background:rgba(28,28,30,.78)}
+}
+
+.tabs{display:flex;gap:2px;margin:10px 12px;padding:2px;background:var(--fill);
+      border-radius:10px;flex:0 0 auto}
+.tabs button{flex:1;border:none;background:transparent;border-radius:8px;
+      padding:5px 0;font-size:11.5px;color:var(--dim);font-weight:500}
+.tabs button:hover{background:transparent;color:var(--ink)}
+.tabs button.on{background:var(--surface);color:var(--ink);font-weight:600;
+      box-shadow:0 1px 3px rgba(0,0,0,.08)}
+@media (prefers-color-scheme: dark){
+  .tabs button.on{background:#48484a;color:#fff}
+}
+
+.panel{display:none;overflow-y:auto;padding:4px 16px 20px;flex:1}
+.panel.on{display:block}
+.panel::-webkit-scrollbar{width:8px}
+.panel::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+.panel::-webkit-scrollbar-track{background:transparent}
+
+label{display:block;font-size:11px;color:var(--dim2);margin:14px 0 5px;font-weight:600;
+      letter-spacing:.01em}
+input[type=text],textarea,select{width:100%;padding:7px 10px;border:1px solid transparent;
+      border-radius:var(--r-sm);font-family:var(--font);font-size:12.5px;background:var(--fill);
+      color:var(--ink);transition:background .18s,border-color .18s,box-shadow .18s;resize:vertical}
+input[type=text]:focus,textarea:focus,select:focus{outline:none;background:var(--surface);
+      border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,113,227,.12)}
+textarea{line-height:1.55;font-family:var(--mono);font-size:11.5px}
+
+.hint{color:var(--dim);font-size:11.5px;line-height:1.65}
+.kv{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:12.5px}
+.kv b{font-weight:600;letter-spacing:-.005em}
+.chip{display:inline-block;padding:1.5px 8px;border-radius:980px;font-size:10.5px;
+      border:1px solid var(--line);background:var(--surface2);margin-right:4px;
+      font-weight:500;letter-spacing:.01em}
+.warnbox{background:var(--err-soft);border:1px solid var(--err-line);color:var(--err);
+      padding:10px 12px;border-radius:10px;font-size:11.5px;line-height:1.6;margin:8px 0}
+.okbox{background:var(--ok-soft);border:1px solid var(--ok-line);color:var(--ok);
+      padding:10px 12px;border-radius:10px;font-size:11.5px;line-height:1.6;margin:8px 0}
+.row{display:flex;gap:8px;align-items:center}
+.row > *{flex:1}
+.row > .fix{flex:0 0 auto}
+hr{border:none;border-top:1px solid var(--line);margin:14px 0}
+
+.op{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;
+    font-size:11.5px;background:var(--surface2);transition:background .18s,border-color .18s}
+.op .t{font-weight:600;margin-bottom:3px;font-size:12px;letter-spacing:-.005em}
+.op .m{color:var(--dim);font-size:11px;line-height:1.5}
+.op .act{display:flex;gap:6px;margin-top:8px}
+.op.rej{border-color:var(--err-line);background:var(--err-soft)}
+.op.acc{border-color:var(--ok-line);background:var(--ok-soft)}
+.op.done{opacity:.55}
+.empty{color:var(--dim2);text-align:center;padding:44px 12px;font-size:12.5px;line-height:2}
+code{background:var(--fill);padding:1.5px 6px;border-radius:6px;font-family:var(--mono);
+     font-size:11px}
+kbd{background:var(--surface);border:1px solid var(--line2);border-bottom-width:2px;
+    border-radius:5px;padding:0 5px;font-size:10.5px;font-family:var(--mono);color:var(--ink)}
+
+.term{background:#1c1c1e;color:#e8e8ed;font-family:var(--mono);font-size:11px;
+  line-height:1.55;border-radius:12px;padding:12px 14px;height:308px;overflow-y:auto;
+  white-space:pre-wrap;word-break:break-word;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.term::-webkit-scrollbar{width:8px}
+.term::-webkit-scrollbar-thumb{background:#3a3a3c;border-radius:4px}
+.tui-bar{display:flex;gap:6px;margin-top:8px}
+.tui-bar input{flex:1}
+#tuiStatus{font-size:11px;color:var(--dim2);margin:7px 0 8px;display:flex;align-items:center;gap:6px}
+#tuiStatus i{width:7px;height:7px;border-radius:50%;background:#c7c7cc;display:inline-block}
+#tuiStatus.on i{background:#32d74b;box-shadow:0 0 0 3px rgba(50,215,75,.18)}
+footer#bar{position:fixed;left:0;right:0;bottom:0;height:28px;display:flex;align-items:center;
+  gap:16px;padding:0 18px;background:rgba(255,255,255,.72);
+  backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-top:1px solid var(--line);font-size:11px;color:var(--dim2);z-index:20}
+@media (prefers-color-scheme: dark){
+  footer#bar{background:rgba(28,28,30,.72)}
+}
+#status{color:var(--ink);font-weight:500;white-space:nowrap}
+#bar .keys{margin-left:auto;font-size:10.5px;color:var(--dim2);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>DSH Atlas</h1>
+  <select id="dataset" style="width:auto;padding:5px 12px;border-radius:980px;background:var(--fill);
+          border:1px solid transparent;font-size:12px;color:var(--ink)"></select>
+  <span class="tag hint">左：技术图谱 · 右：我的设计</span>
+  <span class="sp"></span>
+  <input type="search" id="q" placeholder="搜索节点…">
+  <button class="sm" id="btnCheck">检查</button>
+  <button class="sm" id="btnUndo">撤销</button>
+  <button class="sm" id="btnRedo">重做</button>
+  <button class="sm" id="btnSave">导出 JSON</button>
+  <button class="sm" id="btnLoad">导入</button>
+  <button class="sm" id="btnDemo">示例数据</button>
+  <input type="file" id="fileIn" accept=".json" style="display:none">
+</header>
+
+<main>
+  <section class="pane">
+    <div class="pane-head">
+      技术图谱 <span class="tag">先验 · 全局</span>
+      <span class="sp"></span>
+      <button class="sm" data-add="L">+ 节点</button>
+    </div>
+    <svg id="svgL"></svg>
+  </section>
+  <section class="pane">
+    <div class="pane-head">
+      我的设计 <span class="tag">局部 · 可变</span>
+      <span class="sp"></span>
+      <button class="sm" data-add="R">+ 节点</button>
+    </div>
+    <svg id="svgR"></svg>
+  </section>
+  <aside>
+    <div class="tabs">
+      <button class="on" data-tab="detail">详情</button>
+      <button data-tab="ai">AI 辅助</button>
+      <button data-tab="dsh">DSH</button>
+      <button data-tab="help">操作</button>
+    </div>
+    <div class="panel on" id="pDetail"><div class="empty">
+          <div style="font-size:26px;opacity:.25;margin-bottom:14px">◍</div>
+          点一个节点查看详情<br>
+          方向键可直接导航，Enter 打开标题<br>
+          <span style="font-size:11px;opacity:.75">按 <kbd>?</kbd> 看全部快捷键</span>
+        </div></div>
+    <div class="panel" id="pAI">
+      <div class="hint" style="margin-bottom:8px">
+        AI 只能出 patch，不能改图。你逐条裁决。
+      </div>
+      <button class="primary" id="btnCtx" style="width:100%">生成上下文（复制给 AI）</button>
+      <label>上下文</label>
+      <textarea id="ctxOut" rows="8" readonly></textarea>
+      <label>粘贴 AI 返回的 patch（JSON）</label>
+      <textarea id="patchIn" rows="6" placeholder='{"ops":[{"op":"add_node","pane":"L","id":"T18","title":"...","kind":"recon","fails":["..."]}]}'></textarea>
+      <button id="btnParse" style="width:100%;margin-top:6px">解析 patch</button>
+      <div id="ops"></div>
+    </div>
+    <div class="panel" id="pDSH">
+      <div class="hint" style="margin-top:6px">
+        接 <code>dsh headless --json</code>：任务从 stdin 进，事件流实时回。
+        会话自动续接，DSH 可直接读写 <code>state/graph.json</code> 与 <code>docs/</code>。
+      </div>
+
+      <div class="tui-bar" style="margin-top:10px">
+        <button class="primary" id="dshDoc" style="flex:1">📄 为当前设计写技术文档</button>
+      </div>
+      <div class="tui-bar">
+        <button id="dshPatch" style="flex:1">⚡ 让 DSH 审图出 patch</button>
+        <button id="dshReset" title="开新会话">新会话</button>
+      </div>
+
+      <div id="dshState" class="hint" style="margin:8px 0">未开始 · 无会话</div>
+
+      <div id="term" class="term" style="height:250px">等待任务…</div>
+
+      <div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end">
+        <textarea id="dshIn" rows="2" placeholder="给 DSH 一条任务；Ctrl+Enter 发送"></textarea>
+        <button id="dshSend" class="primary" style="flex:0 0 auto">发送</button>
+      </div>
+
+      <hr>
+      <div style="display:flex;align-items:center;gap:8px">
+        <b style="font-size:12px">文档</b>
+        <button class="sm" id="dshDocsRefresh">刷新</button>
+      </div>
+      <div id="dshDocs" class="hint" style="margin-top:6px">（未加载）</div>
+      <pre id="dshDocView" style="display:none;background:var(--surface2);border:1px solid var(--line);
+           border-radius:10px;padding:10px;font-size:11px;line-height:1.6;max-height:220px;
+           overflow:auto;white-space:pre-wrap"></pre>
+
+      <details style="margin-top:12px">
+        <summary class="hint" style="cursor:pointer">文件通道（备用）</summary>
+        <button id="dsSend" style="width:100%;margin-top:10px">① 发送上下文</button>
+        <button id="dsPull" style="width:100%;margin-top:6px">② 拉取 patch</button>
+        <label style="display:flex;gap:6px;align-items:center;text-transform:none;font-weight:400;margin:10px 0 0">
+          <input type="checkbox" id="dsAuto" style="flex:0 0 auto;width:auto;margin:0">
+          <span class="hint">每 3 秒轮询 inbox</span>
+        </label>
+        <div id="dsLog" style="margin-top:8px;font-size:11px;color:var(--dim2);white-space:pre-wrap;
+             font-family:var(--mono);min-height:30px"></div>
+      </details>
+    </div>
+    <div class="panel" id="pHelp">
+      <div class="hint">
+        <b>选择 / 导航</b><br>
+        <kbd>方向键</kbd> 空间导航（选最近的节点）<br>
+        <kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> 顺序轮转<br>
+        <kbd>[</kbd> <kbd>]</kbd> 在左右画布间切换<br>
+        <kbd>Enter</kbd> 打开详情并聚焦标题框<br>
+        <kbd>Esc</kbd> 取消选中 / 退出连线<br><br>
+
+        <b>编辑</b><br>
+        <kbd>N</kbd> 新建节点（建在当前画布选中节点右侧）<br>
+        <kbd>E</kbd> 改标题<br>
+        <kbd>D</kbd> / <kbd>Del</kbd> 删除节点及其连线<br>
+        <kbd>Shift+方向</kbd> 移动 10px　<kbd>Alt+方向</kbd> 移动 1px 微调<br><br>
+
+        <b>连线</b><br>
+        <kbd>L</kbd> 或 <kbd>C</kbd> 进入连线模式 → 方向键选目标 →
+        <kbd>Enter</kbd> 确认 → 输入类型<br>
+        类型简写：<kbd>i</kbd>mproves <kbd>r</kbd>eplaces <kbd>c</kbd>ombines
+        <kbd>q</kbd>uires <kbd>f</kbd>ails_when <kbd>u</kbd>ses<br>
+        <i>replaces 必须写替代条件，否则会被拒。</i><br>
+        鼠标方式：<kbd>Shift</kbd> + 从节点拖到另一节点。<br><br>
+
+        <b>视图 / 面板</b><br>
+        <kbd>+</kbd> <kbd>-</kbd> 缩放　<kbd>0</kbd> 复位　滚轮也可缩放<br>
+        <kbd>1</kbd> 详情　<kbd>2</kbd> AI 辅助　<kbd>3</kbd>/<kbd>?</kbd> 本页<br>
+        <kbd>/</kbd> 搜索　<kbd>Ctrl+Enter</kbd> 全图检查<br>
+        <kbd>Ctrl+Z</kbd> 撤销　<kbd>Ctrl+Y</kbd> 重做　<kbd>Ctrl+S</kbd> 导出 JSON<br><br>
+
+        <b>鼠标（可选）</b><br>
+        拖节点=移动 · 拖空白=平移 · 双击节点=改名 · 双击空白=新建<br><br>
+
+        <b>两图关系</b><br>
+        右图节点在详情里填「关联左图技术」（如 <code>T03, T05</code>）。
+        右图出现蓝点、左图对应节点被引用时也显示蓝点。<br><br>
+
+        <b>自动检查</b><br>
+        左图节点缺失效条件 → 红虚线框（等于宣称它不会坏）<br>
+        边是 replaces 但没写条件 → 边变红<br>
+        右图节点没关联技术 / 没说明 → 详情里报<br>
+        点顶部「检查」看全图问题清单，点条目可直接跳过去。
+      </div>
+    </div>
+  </aside>
+</main>
+<footer id="bar">
+  <span id="status">就绪</span>
+  <span class="keys">方向键 导航 · Shift+方向 移动 · Tab 轮转 · [ ] 换画布 · N 新建 · E 改名 · L 连线 · D 删除 · 1/2/3/ ? 面板 · / 搜索 · Enter 打开详情</span>
+</footer>
+
+<script>
+"use strict";
+/* ============================ 基础 ============================ */
+const KEY = "kgstudio.v1";
+const NW = 182, NH = 56;
+const KCOLOR = {stat:"#5b7c99", near:"#7a8b4a", recon:"#9a6a3c", prob:"#8c5a86",
+                sup:"#7d7d7d", design:"#2f6f8f", misc:"#8a8a85"};
+const RCOLOR = {improves:"#2f7d4f", replaces:"#b8860b", combines:"#8c5a86",
+                requires:"#7d7d7d", fails_when:"#c0392b", uses:"#3a6ea5",
+                feeds:"#0071e3", implements:"#6b4fa8", optimizes:"#b25000",
+                gated_by:"#8e8e93", loops:"#c0392b",
+                decomposes:"#6e6e73", branches:"#0071e3", contradicts:"#c0392b",
+                resolves:"#2f7d4f", mitigates:"#b8860b", instantiates:"#6b4fa8",
+                residual:"#98989d"};
+const RELS = ["improves","replaces","combines","requires","fails_when","uses",
+              "feeds","implements","optimizes","gated_by","loops",
+              "decomposes","branches","contradicts","resolves","mitigates",
+              "instantiates","residual"];
+// 语义分组：一眼区分"技术关系"和"算法结构"
+const REL_KIND = {
+  improves:"tech", replaces:"tech", combines:"tech", requires:"tech",
+  fails_when:"tech", uses:"tech",
+  feeds:"flow", implements:"flow", optimizes:"flow", gated_by:"flow", loops:"flow",
+  decomposes:"why", branches:"why", contradicts:"why", resolves:"why",
+  mitigates:"why", instantiates:"why", residual:"why"
+};
+let COLLAPSED = new Set();
+
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cut = (s,n) => { s=String(s==null?"":s); return s.length>n ? s.slice(0,n-1)+"…" : s; };
+// 按显示宽度截断：中文按 2 个单位
+const cutW = (s,max) => { let w=0,o=""; for(const ch of String(s==null?"":s)){ const c=ch.charCodeAt(0)>255?2:1; if(w+c>max) return o+"…"; w+=c; o+=ch; } return o; };
+const $ = s => document.querySelector(s);
+const uid = p => p + "_" + Math.random().toString(36).slice(2,8);
+
+let S = { L:{nodes:[],edges:[]}, R:{nodes:[],edges:[]} };
+let V = { L:{x:10,y:0,k:0.75}, R:{x:-40,y:0,k:0.85} };
+let SEL = { pane:null, id:null };
+let UNDO = [], REDO = [], SEARCH = "";
+
+/* ============================ 示例数据 ============================ */
+function demo(){
+  const mk = (id,title,kind,x,y,fails,note)=>({id,title,kind,x,y,fails:fails||[],note:note||"",params:[]});
+  const L = { nodes:[
+    mk("T01","Z-score (3σ)","stat",20,20,["非平稳下 μ/σ 被趋势污染","重尾分布时 σ 无意义","周期性波峰被误判"],"NIST e-Handbook §6.3.2"),
+    mk("T02","移动平均残差","stat",20,110,["窗口 < 周期时把季节当残差","阶跃异常被抹平"],""),
+    mk("T03","STL 分解残差","stat",20,200,["周期漂移时固定 s_window 产生系统残差","双向 LOESS 在线会前视"],"Cleveland 1990, JOS"),
+    mk("T04","S-H-ESD","stat",20,290,["异常占比 >5% 时鲁棒统计被污染","周期错则全错"],"arXiv:1704.07706"),
+    mk("T05","Matrix Profile","stat",20,380,["周期漂移产生伪 discord","内存 O(n)"],"Yeh 2016 ICDM"),
+    mk("T06","kNN 距离","near",232,20,["密度不均时漏检","d>20 距离趋同"],"Ramaswamy 2000 SIGMOD"),
+    mk("T07","LOF","near",232,110,["需全量内存","簇状异常互相包庇"],"Breunig 2000 SIGMOD"),
+    mk("T08","One-Class SVM","near",232,200,["ν/核宽无标签难调","n>1e4 训练贵"],"Schölkopf 2001"),
+    mk("T09","PCA 重构误差","recon",444,20,["训练集污染则子空间偏移","非线性流形下残差无语义"],""),
+    mk("T10","AutoEncoder 重构","recon",444,110,["过完备导致恒等映射","训练集含异常则学会异常"],"Sakurada 2014"),
+    mk("T11","Donut (VAE)","recon",444,200,["周期漂移整体抬高误差","缺失率>5% 后验不稳"],"Xu 2018 WWW"),
+    mk("T12","Anomaly Transformer","recon",444,290,["小样本过拟合","边缘推理超预算"],"Xu 2022 ICLR"),
+    mk("T13","TimesNet","recon",444,380,["周期漂移时 FFT 选周期不稳","同样需大样本"],"Wu 2023 ICLR"),
+    mk("T14","高斯过程残差","prob",656,20,["O(n³) 不可扩展","核选错则方差失真"],"Rasmussen 2006"),
+    mk("T15","扩散模型先验","prob",656,110,["采样 50+ 步，流式不可行","小样本生成欠拟合"],"Wolleb 2022 MICCAI"),
+    mk("T16","有监督分类","sup",656,200,["标注稀少必过拟合","无法覆盖新类型"],"")
+  ], edges:[
+    {id:"e1",from:"T02",to:"T01",rel:"improves",note:"先减局部均值再算 z"},
+    {id:"e2",from:"T03",to:"T02",rel:"improves",note:"显式分解季节项"},
+    {id:"e3",from:"T04",to:"T03",rel:"improves",note:"median/MAD 抗污染"},
+    {id:"e4",from:"T04",to:"T03",rel:"requires",note:"需要 STL 给周期分量"},
+    {id:"e5",from:"T05",to:"T01",rel:"replaces",note:"条件：无需训练、单变量、n<1e5"},
+    {id:"e6",from:"T05",to:"T03",rel:"replaces",note:"条件：周期漂移明显"},
+    {id:"e7",from:"T07",to:"T06",rel:"improves",note:"局部密度归一化"},
+    {id:"e8",from:"T08",to:"T07",rel:"replaces",note:"条件：维度>10 或 n>1e4"},
+    {id:"e9",from:"T09",to:"T01",rel:"improves",note:"建模传感器相关"},
+    {id:"e10",from:"T10",to:"T09",rel:"improves",note:"非线性流形"},
+    {id:"e11",from:"T11",to:"T10",rel:"improves",note:"概率输出+缺失鲁棒"},
+    {id:"e12",from:"T12",to:"T11",rel:"replaces",note:"条件：长依赖>100 步且 n>=1e5"},
+    {id:"e13",from:"T12",to:"T10",rel:"requires",note:"沿用编码器-重构框架"},
+    {id:"e14",from:"T13",to:"T12",rel:"combines",note:"补多周期结构"},
+    {id:"e15",from:"T15",to:"T11",rel:"replaces",note:"条件：允许 50+ 采样、离线"},
+    {id:"e16",from:"T01",to:"T04",rel:"fails_when",note:"共享失效：非平稳下误报失控"},
+    {id:"e17",from:"T09",to:"T10",rel:"fails_when",note:"共享失效：训练集污染则学会异常"},
+    {id:"e18",from:"T12",to:"T13",rel:"fails_when",note:"共享失效：小样本过拟合"}
+  ]};
+
+  const d = (id,title,x,y,fails,note)=>({id,title,kind:"design",x,y,fails:fails||[],note:note||"",params:[],refs:[]});
+  const R = { nodes:[
+    d("S1","数据接入",250,0,[],"1min 采样，缺失 3.2%（最长 28min），流式延迟<5s"),
+    d("S2","清洗与重采样",250,90,["成段缺失>30min 不可填补"],"只允许因果填补"),
+    d("S3","归一化 / 去趋势",250,180,["s_window 固定 24 在漂移期产生假异常"],"日+周双周期，幅度漂移 18%"),
+    d("S4","周期分解",250,270,["双向 LOESS 引入前视偏差"],"周期 22–26h 漂移"),
+    d("S5","滑窗构造",250,360,["L 过大则分数平滑漏检"],"L 需覆盖 ≥2 个周期"),
+    d("S6","表示 / 嵌入",250,450,["过完备导致恒等映射"],"2e4 窗口，显存≤2GB"),
+    d("S7","异常打分",250,540,["缺失>5% 时打分不稳"],"需可解释 + 需不确定性 + 无监督"),
+    d("S8","阈值与决策",250,630,["异常占比>5% 时 ESD 失效"],"误报预算 ≤3/天"),
+    d("S9","多变量聚合",250,720,["简单 OR 导致告警爆炸"],"5 传感器存在共因"),
+    d("S10","评估与反馈",250,810,["point-adjust F1 会虚高"],"仅 12 个确认事件")
+  ], edges:[
+    {id:"r1",from:"S1",to:"S2",rel:"uses",note:"series_v0"},
+    {id:"r2",from:"S2",to:"S3",rel:"uses",note:"series_v1"},
+    {id:"r3",from:"S3",to:"S4",rel:"uses",note:"series_v2"},
+    {id:"r4",from:"S4",to:"S5",rel:"uses",note:"resid"},
+    {id:"r5",from:"S5",to:"S6",rel:"uses",note:"windows"},
+    {id:"r6",from:"S6",to:"S7",rel:"uses",note:"emb"},
+    {id:"r7",from:"S7",to:"S8",rel:"uses",note:"score"},
+    {id:"r8",from:"S8",to:"S9",rel:"uses",note:"alarm"},
+    {id:"r9",from:"S9",to:"S10",rel:"uses",note:"event"},
+    {id:"r10",from:"S10",to:"S8",rel:"uses",note:"feedback 回流调阈值"}
+  ]};
+  R.nodes.find(n=>n.id==="S3").refs=["T03","T05"];
+  R.nodes.find(n=>n.id==="S6").refs=["T10"];
+  R.nodes.find(n=>n.id==="S7").refs=["T11","T12","T15"];
+  R.nodes.find(n=>n.id==="S8").refs=["T04"];
+  return {L,R};
+}
+
+
+/* ============================ 数据集：SuperMimic (CoRL 2026) ============================ */
+function supermimic(){
+  const mk=(id,title,kind,group,x,y,fails,note)=>
+    ({id,title,kind,group,x,y,fails:fails||[],note:note||"",params:[]});
+
+  const L = { nodes:[
+    // L0 目标
+    mk("P0","1 个策略 · 129,514 条动作 · 单卡几小时","misc","L0 目标",340,40,
+       ["目标本身不可测：只有归一化回报","『几小时』不含 checkpoint 评估"],
+       "SuperMimic 的目标陈述：1×H100 3h 超过 SONIC（128×L40 168h）"),
+
+    // L1 根本问题
+    mk("P1","要评估动作好坏 → 必须估计未来状态 s'","misc","L1 根本问题",340,170,
+       ["估计有偏则梯度有偏","估计太慢则吞吐受限"],
+       "第一性问题：所有策略梯度方法都等价于『在某处推演未来』"),
+
+    // L2 两条根本路线
+    mk("P2","路线 A：用真模拟器推演","recon","L2 分叉",200,300,
+       ["每步物理步进不可并行跨越","非平滑接触不可微"],
+       "MuJoCo / Isaac Gym 属于此路"),
+    mk("P3","路线 B：学一个世界模型代替推演","recon","L2 分叉",520,300,
+       ["模型误差随 horizon 累积","接触切换处误差最大"],
+       "把物理引擎换成拟合出来的函数"),
+
+    // L3 各自的内在矛盾
+    mk("P4","矛盾 A：吞吐 = 步数 × 批大小，受物理步进限制","stat","L3 内在矛盾",200,430,
+       ["并行化只能扩大批，绕不过单步延迟"],
+       "SONIC 用 21k GPU-h 换取吞吐"),
+    mk("P5","矛盾 B：误差随 horizon 累积 → 回报估计有偏","stat","L3 内在矛盾",520,430,
+       ["horizon 越长偏差越大","horizon 越短方差越大"],
+       "这是所有 model-based RL 的核心矛盾"),
+
+    // L4 解决手段
+    mk("P6","大规模并行（128 GPU）","misc","L4 解决手段",20,560,
+       ["成本线性上升，且翻转动作仍失败"],
+       "提高吞吐而非降低需求"),
+    mk("P7","缩短 imagine horizon（16–32 步）","math","L4 解决手段",220,560,
+       ["horizon 外无回报信号"],
+       "把误差累积窗口压到可接受范围"),
+    mk("P8","critic bootstrap 补 horizon 外回报","recon","L4 解决手段",420,560,
+       ["critic 自身偏差污染梯度"],
+       "16 步 + critic ≈ 32 步无 critic"),
+    mk("P9","解析策略梯度（一阶穿透模型）","math","L4 解决手段",620,560,
+       ["一阶忽略二阶项，步长过大易崩"],
+       "≈64× 更少的想象步数"),
+    mk("P10","模型每迭代更新，策略更新内冻结","math","L4 解决手段",820,560,
+       ["冻结期间模型与真实分布偏离"],
+       "双层优化的稳定性关键"),
+
+    // L5 具体实现
+    mk("P11","SONIC（128×L40 · 168h）","prob","L5 实现",120,700,
+       ["翻转/侧滚 44/44 全失败","总失败 179 条"],
+       "路线 A 的工程极限"),
+    mk("P12","MuJoCo Warp（数据源，不可微）","misc","L5 实现",340,700,
+       ["只能当数据源，不能反传"],
+       "梯度不穿模拟器"),
+    mk("P13","SuperMimic（1×H100 · 3h）","recon","L5 实现",560,700,
+       ["多步漂移仍是硬边界"],
+       "路线 B + 一阶梯度"),
+    mk("P14","PPO-WM（模型内采样梯度）","recon","L5 实现",780,700,
+       ["需要远多于解析梯度的想象步数"],
+       "路线 B 的采样版，被 P9 比下去"),
+
+    // L6 残余问题
+    mk("P15","残余：接触切换无法可靠建模","misc","L6 残余",120,840,
+       ["非平滑接触的本质困难，未被解决"],
+       "世界模型在落地瞬间误差最大"),
+    mk("P16","残余：多步漂移，长 horizon 不可用","misc","L6 残余",340,840,
+       ["依赖 critic 兜底，非根治"],
+       ""),
+    mk("P17","残余：数据覆盖偏日常（264h 公开子集）","misc","L6 残余",560,840,
+       ["极限动作样本稀疏，学不到"],
+       "SONIC 611h 的子集"),
+    mk("P18","残余：翻转/侧滚仍是覆盖盲区","misc","L6 残余",780,840,
+       ["即便 SuperMimic 也只在 benchmark 内 0 失败"],
+       "benchmark 动作都是训练动作，测的是覆盖不是泛化")
+  ], edges:[
+    {id:"de1",from:"P0",to:"P1",rel:"decomposes",note:"把目标拆成『如何估计未来』"},
+    {id:"de2",from:"P1",to:"P2",rel:"branches",note:"路线 A：真推演"},
+    {id:"de3",from:"P1",to:"P3",rel:"branches",note:"路线 B：学模型"},
+    {id:"de4",from:"P2",to:"P4",rel:"contradicts",note:"A 的内在矛盾：吞吐被物理步进卡住"},
+    {id:"de5",from:"P3",to:"P5",rel:"contradicts",note:"B 的内在矛盾：误差随 horizon 累积"},
+    {id:"de6",from:"P6",to:"P4",rel:"resolves",note:"扩批并行，绕不过单步延迟但摊薄总时间"},
+    {id:"de7",from:"P7",to:"P5",rel:"mitigates",note:"只缓解：把累积窗口压短"},
+    {id:"de8",from:"P8",to:"P7",rel:"resolves",note:"补上 horizon 外的回报，消除短窗口偏差"},
+    {id:"de9",from:"P9",to:"P5",rel:"resolves",note:"一阶穿透模型，样本效率替代模型精度"},
+    {id:"de10",from:"P10",to:"P5",rel:"resolves",note:"冻结切断『策略追逐模型』的不稳定"},
+    {id:"de11",from:"P11",to:"P6",rel:"instantiates",note:"路线 A 的工程实现"},
+    {id:"de12",from:"P12",to:"P3",rel:"instantiates",note:"但只当数据源：不反传"},
+    {id:"de13",from:"P13",to:"P9",rel:"instantiates",note:"核心组合：WM + 一阶梯度"},
+    {id:"de14",from:"P13",to:"P8",rel:"instantiates",note:"32 步 + critic"},
+    {id:"de15",from:"P14",to:"P3",rel:"instantiates",note:"采样梯度的对照路线"},
+    {id:"de16",from:"P3",to:"P15",rel:"residual",note:"路线 B 留下的坑"},
+    {id:"de17",from:"P5",to:"P16",rel:"residual",note:"矛盾只被缓解，未被解决"},
+    {id:"de18",from:"P0",to:"P17",rel:"residual",note:"目标受数据覆盖限制"},
+    {id:"de19",from:"P16",to:"P18",rel:"residual",note:"长 horizon 不可用 → 极限动作学不会"}
+  ]};
+
+  const d=(id,title,group,x,y,fails,note,refs)=>
+    ({id,title,kind:"design",group,x,y,fails:fails||[],note:note||"",params:[],refs:refs||[]});
+
+  const R = { nodes:[
+    // ① 数据
+    d("S1","加载 BONES-SEED","① 数据",200,90,
+      ["264h 覆盖偏日常，极限动作稀疏"],"264.56h 公开子集",["T14","T15"]),
+    d("S2","Retarget → G1","① 数据",430,90,
+      ["接触点错位会让跟踪目标不可达"],"骨骼→关节空间映射",["T03"]),
+
+    // ② 采集
+    d("S3","MuJoCo Warp 采集 transitions","② 采集",200,210,
+      ["非平滑接触：不能反传，只能当数据源","批大小决定吞吐"],"记录 (s,a,s') 到 replay",["T10"]),
+
+    // ③ 世界模型
+    d("S4","拟合世界模型","③ 世界模型",200,330,
+      ["一步误差 0.007–0.011；多步会漂移","接触切换处误差最大"],
+      "监督学习；每轮迭代更新一次",["T07"]),
+
+    // ④ 策略
+    d("S5","在模型内 imagine 32 步","④ 策略",200,450,
+      ["horizon 太短则回报估计有偏","需要 critic 补 bootstrap"],
+      "此处世界模型冻结（梯度不穿 WM）",["T07","T09"]),
+    d("S6","解析策略梯度（first-order）","④ 策略",200,570,
+      ["一阶近似忽略二阶项，步长过大易崩","需要可微模型"],
+      "比 PPO-WM 少 ~64× 想象步数",["T05"]),
+    d("S7","critic bootstrap","④ 策略",200,690,
+      ["critic 偏差会污染策略梯度"],"16 步+critic ≈ 32 步无 critic",["T04"]),
+
+    // ⑤ 部署
+    d("S8","零样本部署 Unitree G1","⑤ 部署",200,810,
+      ["真机摩擦/延迟与模型不符则失效"],"单策略覆盖全部动作，无 per-motion 调参",["T12"]),
+
+    // 约束
+    d("S9","终止条件","约束",450,450,
+      ["过严会误杀有效探索","过松则学到摔倒策略"],"training termination：触发即判该 motion 失败",[]),
+    d("S10","奖励：跟踪误差","约束",450,570,
+      ["只有跟踪项会鼓励硬撑，缺自然性"],"参考动作 + 正则项",[])
+  ], edges:[
+    {id:"sr1",from:"S1",to:"S2",rel:"feeds",note:"动作序列"},
+    {id:"sr2",from:"S2",to:"S3",rel:"feeds",note:"目标轨迹"},
+    {id:"sr3",from:"S3",to:"S4",rel:"feeds",note:"transitions（不反传）"},
+    {id:"sr4",from:"S4",to:"S5",rel:"feeds",note:"模型参数：本轮冻结"},
+    {id:"sr5",from:"S5",to:"S6",rel:"feeds",note:"imagined trajectory"},
+    {id:"sr6",from:"S6",to:"S7",rel:"feeds",note:"策略梯度 → 更新"},
+    {id:"sr7",from:"S7",to:"S3",rel:"loops",note:"外环：用新策略重新采集（每迭代）"},
+    {id:"sr8",from:"S4",to:"S3",rel:"loops",note:"外环：世界模型随迭代更新"},
+    {id:"sr9",from:"S9",to:"S5",rel:"gated_by",note:"终止条件截断 imagine rollout"},
+    {id:"sr10",from:"S10",to:"S6",rel:"feeds",note:"奖励信号进入梯度"},
+    {id:"sr11",from:"S7",to:"S8",rel:"feeds",note:"收敛后导出策略"},
+    {id:"sr12",from:"S5",to:"S5",rel:"loops",note:"内环：32 步自回归"}
+  ]};
+
+  return {L,R};
+}
+
+/* ============================ 数据集注册 ============================ */
+const DATASETS = {
+  tsad: { label: "时序异常检测", make: demo },
+  sm:   { label: "SuperMimic (CoRL 2026)", make: supermimic }
+};
+let CUR = "tsad";
+
+/* ============================ 状态 ============================ */
+function snapshot(){ return JSON.stringify({L:S.L,R:S.R}); }
+function pushUndo(){ UNDO.push(snapshot()); if(UNDO.length>60) UNDO.shift(); REDO.length=0; }
+function restore(str){ const o=JSON.parse(str); S.L=o.L; S.R=o.R; renderAll(); persist(); }
+function persist(){
+  try{ localStorage.setItem(KEY, JSON.stringify({L:S.L,R:S.R,V,cur:CUR})); }catch(e){}
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return false;
+    const o = JSON.parse(raw);
+    if(!o.L || !o.R) return false;
+    S.L=o.L; S.R=o.R; if(o.V) V=o.V; if(o.cur && DATASETS[o.cur]) CUR=o.cur; return true;
+  }catch(e){ return false; }
+}
+
+/* ============================ 渲染 ============================ */
+const byId = (p,id) => S[p].nodes.find(n=>n.id===id);
+
+function markers(){
+  return Object.entries(RCOLOR).map(([k,c])=>
+    `<marker id="m_${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5"
+      markerHeight="5.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join("");
+}
+
+function anchor(n, tx, ty){
+  const cx=n.x+NW/2, cy=n.y+NH/2;
+  const dx=tx-cx, dy=ty-cy;
+  if(dx===0 && dy===0) return {x:cx,y:cy};
+  const sx = dx!==0 ? (NW/2)/Math.abs(dx) : Infinity;
+  const sy = dy!==0 ? (NH/2)/Math.abs(dy) : Infinity;
+  const s = Math.min(sx,sy);
+  return {x:cx+dx*s, y:cy+dy*s};
+}
+
+function edgeSVG(p,e){
+  const a=byId(p,e.from), b=byId(p,e.to);
+  if(!a||!b) return "";
+  if(e.from === e.to){                       // 自环
+    const x=a.x+NW, y=a.y+NH/2;
+    const col=RCOLOR[e.rel]||"#999";
+    const d=`M${x},${y-10} C${x+58},${y-44} ${x+58},${y+44} ${x},${y+10}`;
+    return `<path class="edge" stroke="${col}" d="${d}" marker-end="url(#m_${e.rel})"/>
+      <text class="elbl" x="${x+44}" y="${y-2}" fill="${col}">${esc(e.rel)}</text>`;
+  }
+  const ac={x:a.x+NW/2, y:a.y+NH/2}, bc={x:b.x+NW/2, y:b.y+NH/2};
+  const p1=anchor(a,bc.x,bc.y), p2=anchor(b,ac.x,ac.y);
+  const dx=p2.x-p1.x, dy=p2.y-p1.y;
+  const len=Math.hypot(dx,dy)||1;
+  let cx,cy;
+  const backEdge = (bc.x < ac.x - 20);          // 回边（指向左侧）→ 绕下方
+  if(backEdge){
+    cx=(p1.x+p2.x)/2; cy=Math.max(p1.y,p2.y)+Math.min(140, Math.abs(dx)*0.28+60);
+  } else if(Math.abs(dx) < 24){                // 同列：竖直直连
+    cx=(p1.x+p2.x)/2; cy=(p1.y+p2.y)/2;
+  } else {
+    const nx=-dy/len, ny=dx/len;               // 法向弯曲，避免穿过节点
+    const bow=Math.min(56, len*0.16);
+    cx=(p1.x+p2.x)/2 + nx*bow; cy=(p1.y+p2.y)/2 + ny*bow;
+  }
+  const d=`M${p1.x.toFixed(1)},${p1.y.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  const col = RCOLOR[e.rel] || "#999";
+  const bad = (e.rel==="replaces" && !(e.note||"").trim());
+  const mk = RCOLOR[e.rel] ? `marker-end="url(#m_${e.rel})"` : "";
+  const dash = e.rel==="residual" ? "2 4"
+             : e.rel==="fails_when" ? "5 3"
+             : e.rel==="loops" ? "7 4"
+             : (bad ? "4 3" : "");
+  const lx=(p1.x+p2.x)/2, ly=(p1.y+p2.y)/2 - 3;
+  return `<path class="edge" stroke="${col}" stroke-dasharray="${dash}" d="${d}" ${mk}/>
+   <text class="elbl" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="${bad?"#b03a2e":col}" text-anchor="middle">${esc(e.rel)}</text>`;
+}
+
+function nodeSVG(p,n){
+  const sel = (SEL.pane===p && SEL.id===n.id) ? " sel" : "";
+  const bad = flagOf(p,n) ? " flag" : "";
+  const col = KCOLOR[n.kind] || "#8a8a85";
+  const hi = SEARCH && (n.title||"").toLowerCase().includes(SEARCH);
+  const hasRef = (p==="R" && (n.refs||[]).length) || (p==="L" && refsFromL(n.id));
+  return `<g class="node${sel}${bad}" data-pane="${p}" data-id="${esc(n.id)}" transform="translate(${n.x},${n.y})">
+    <rect class="bg" width="${NW}" height="${NH}" rx="12" ${hi?'stroke="#b8860b" stroke-width="2.2"':''}/>
+    <rect x="0" y="0" width="4" height="${NH}" rx="2" fill="${col}"/>
+    <text class="t1" x="13" y="23">${esc(cutW(n.title,24))}</text>
+    <text class="t2" x="13" y="40">${esc(cutW(n.id+" · "+(n.kind||"-"),32))}</text>
+    ${(n.fails&&n.fails.length)?`<circle class="dot" cx="${NW-11}" cy="13" r="5"/>`:""}
+    ${hasRef?`<circle class="ref" cx="${NW-11}" cy="${NH-12}" r="4.5"/>`:""}
+  </g>`;
+}
+
+function refsFromL(id){
+  return S.R.nodes.some(n=>(n.refs||[]).includes(id));
+}
+function flagOf(p,n){
+  if(p==="L") return !(n.fails||[]).length;
+  return !(n.fails||[]).length && !(n.note||"").trim();
+}
+
+function visible(p){
+  return S[p].nodes.filter(n => !(n.group && COLLAPSED.has(n.group)));
+}
+
+function groupBoxes(p, vis){
+  const groups = {};
+  vis.forEach(n=>{ if(n.group) (groups[n.group]=groups[n.group]||[]).push(n); });
+  let out = "";
+  Object.entries(groups).forEach(([g, arr])=>{
+    const xs=arr.map(n=>n.x), ys=arr.map(n=>n.y);
+    const x0=Math.min(...xs)-18, y0=Math.min(...ys)-48;
+    const x1=Math.max(...xs)+NW+18, y1=Math.max(...ys)+NH+18;
+    out += `<g class="grp" data-grp="${esc(g)}">
+      <rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="18"
+        fill="rgba(0,113,227,.045)" stroke="rgba(0,113,227,.22)"
+        stroke-width="1.2" stroke-dasharray="7 4"/>
+      <text x="${x0+16}" y="${y0+24}" font-size="11.5" font-weight="600"
+        fill="#0071e3" opacity=".9">${esc(g)}</text>
+    </g>`;
+  });
+  // 折叠的组：画一个小标签
+  const all = {};
+  S[p].nodes.forEach(n=>{ if(n.group) (all[n.group]=all[n.group]||[]).push(n); });
+  Object.entries(all).forEach(([g,arr])=>{
+    if(!COLLAPSED.has(g)) return;
+    out += `<g class="grp collapsed" data-grp="${esc(g)}">
+      <rect x="20" y="${380 + Object.keys(all).indexOf(g)*46}" width="200" height="34" rx="10"
+        fill="rgba(0,113,227,.08)" stroke="rgba(0,113,227,.3)" stroke-dasharray="5 3"/>
+      <text x="34" y="${380 + Object.keys(all).indexOf(g)*46 + 22}" font-size="11.5"
+        fill="#0071e3">▸ ${esc(g)} (${arr.length})</text>
+    </g>`;
+  });
+  return out;
+}
+
+function renderPane(p){
+  const svg = $("#svg"+p);
+  const v = V[p];
+  const vis = visible(p);
+  const ids = new Set(vis.map(n=>n.id));
+  let s = `<defs>${markers()}</defs>`;
+  s += `<g transform="translate(${v.x},${v.y}) scale(${v.k})">`;
+  s += groupBoxes(p, vis);
+  S[p].edges.forEach(e => {
+    if(!ids.has(e.from) || !ids.has(e.to)) return;
+    s += edgeSVG(p,e);
+  });
+  vis.forEach(n => { s += nodeSVG(p,n); });
+  s += `</g>`;
+  svg.innerHTML = s;
+}
+
+function toggleGroup(g){
+  if(!g) return;
+  if(COLLAPSED.has(g)) COLLAPSED.delete(g); else COLLAPSED.add(g);
+  renderAll();
+  status((COLLAPSED.has(g) ? "折叠 " : "展开 ") + g);
+}
+function renderAll(){ renderPane("L"); renderPane("R"); persist();
+  if(typeof syncState === "function") syncState(); }
+
+/* ============================ 视图变换 ============================ */
+function applyView(p){
+  const g = $("#svg"+p).querySelector("g");
+  if(g) g.setAttribute("transform", `translate(${V[p].x},${V[p].y}) scale(${V[p].k})`);
+}
+
+/* ============================ 交互 ============================ */
+let drag = null;
+
+function bindPane(p){
+  const svg = $("#svg"+p);
+
+  svg.addEventListener("mousedown", ev=>{
+    const g = ev.target.closest ? ev.target.closest(".node") : null;
+    if(ev.button !== 0) return;
+    if(g){
+      const id = g.dataset.id;
+      const n = byId(p,id); if(!n) return;
+      if(ev.shiftKey){                       // shift 拖 = 连线
+        drag = {mode:"link", pane:p, from:id, x:ev.clientX, y:ev.clientY};
+        return;
+      }
+      pushUndo();
+      SEL = {pane:p, id:id};
+      drag = {mode:"node", pane:p, id:id, sx:ev.clientX, sy:ev.clientY, ox:n.x, oy:n.y, moved:false};
+      renderPane(p); renderDetail();
+      ev.preventDefault();
+      return;
+    }
+    drag = {mode:"pan", pane:p, sx:ev.clientX, sy:ev.clientY, ox:V[p].x, oy:V[p].y};
+    svg.classList.add("panning");
+  });
+
+  window.addEventListener("mousemove", ev=>{
+    if(!drag || drag.pane!==p) return;
+    if(drag.mode==="node"){
+      const n = byId(p,drag.id); if(!n) return;
+      const dx=(ev.clientX-drag.sx)/V[p].k, dy=(ev.clientY-drag.sy)/V[p].k;
+      if(Math.abs(dx)>1||Math.abs(dy)>1) drag.moved=true;
+      n.x = Math.round(drag.ox+dx); n.y = Math.round(drag.oy+dy);
+      const g = [...svg.querySelectorAll(".node")].find(x=>x.dataset.id===drag.id);
+      if(g) g.setAttribute("transform", `translate(${n.x},${n.y})`);
+      refreshEdgesLive(p);
+    } else if(drag.mode==="pan"){
+      V[p].x = drag.ox + (ev.clientX-drag.sx);
+      V[p].y = drag.oy + (ev.clientY-drag.sy);
+      applyView(p);
+    }
+  });
+
+  window.addEventListener("mouseup", ev=>{
+    if(!drag || drag.pane!==p) return;
+    const d = drag; drag = null;
+    svg.classList.remove("panning");
+    if(d.mode==="link"){
+      const g = ev.target.closest ? ev.target.closest(".node") : null;
+      if(g && g.dataset.pane===p && g.dataset.id!==d.from){
+        createEdge(p, d.from, g.dataset.id);
+      }
+    } else if(d.mode==="node"){
+      persist();
+    } else if(d.mode==="pan"){
+      persist();
+    }
+  });
+
+  svg.addEventListener("click", ev=>{
+    const g = ev.target.closest ? ev.target.closest(".grp") : null;
+    if(g && !(ev.target.closest && ev.target.closest(".node"))){
+      toggleGroup(g.dataset.grp);
+    }
+  });
+
+  svg.addEventListener("dblclick", ev=>{
+    const g = ev.target.closest ? ev.target.closest(".node") : null;
+    if(g){
+      const n = byId(p,g.dataset.id); if(!n) return;
+      const t = prompt("节点标题：", n.title);
+      if(t!==null && t.trim()!==""){ pushUndo(); n.title=t.trim(); renderAll(); renderDetail(); }
+      return;
+    }
+    const t = prompt("新节点标题：","");
+    if(!t || !t.trim()) return;
+    pushUndo();
+    const pt = toWorld(p, ev.clientX, ev.clientY);
+    const n = {id: uid(p==="L"?"N":"S"), title:t.trim(), kind:p==="L"?"misc":"design",
+               x:Math.round(pt.x), y:Math.round(pt.y), fails:[], note:"", params:[]};
+    if(p==="R") n.refs=[];
+    S[p].nodes.push(n);
+    SEL={pane:p,id:n.id};
+    renderAll(); renderDetail();
+  });
+
+  svg.addEventListener("wheel", ev=>{
+    ev.preventDefault();
+    const r = svg.getBoundingClientRect();
+    const mx = ev.clientX-r.left, my = ev.clientY-r.top;
+    const k0 = V[p].k;
+    const k = Math.min(2.6, Math.max(0.25, k0 * (ev.deltaY<0 ? 1.1 : 0.9)));
+    V[p].x = mx - (mx - V[p].x) * (k/k0);
+    V[p].y = my - (my - V[p].y) * (k/k0);
+    V[p].k = k;
+    applyView(p); persist();
+  }, {passive:false});
+}
+
+function refreshEdgesLive(p){
+  const svg = $("#svg"+p);
+  const g = svg.querySelector("g"); if(!g) return;
+  // 简化：重绘边（节点位置直接写回 DOM，重绘边不影响拖拽）
+  const nodesG = [...svg.querySelectorAll(".node")];
+  const pos = {};
+  nodesG.forEach(el=>{
+    const m = /translate\(([-\d.]+),([-\d.]+)\)/.exec(el.getAttribute("transform")||"");
+    if(m) pos[el.dataset.id] = {x:+m[1], y:+m[2]};
+  });
+  S[p].nodes.forEach(n=>{ if(pos[n.id]){ n.x = pos[n.id].x; n.y = pos[n.id].y; } });
+  svg.querySelectorAll("path.edge, text.elbl").forEach(el=>el.remove());
+  const frag = document.createDocumentFragment();
+  const tmp = document.createElementNS("http://www.w3.org/2000/svg","g");
+  tmp.innerHTML = S[p].edges.map(e=>edgeSVG(p,e)).join("");
+  while(tmp.firstChild) frag.appendChild(tmp.firstChild);
+  g.insertBefore(frag, g.querySelector(".node"));
+}
+
+function toWorld(p, cx, cy){
+  const r = $("#svg"+p).getBoundingClientRect();
+  return { x:(cx-r.left - V[p].x)/V[p].k, y:(cy-r.top - V[p].y)/V[p].k };
+}
+
+function createEdge(p, from, to){
+  if(p==="L"){
+    const rel = prompt("关系类型（"+RELS.join(" / ")+"）：","improves");
+    if(!rel || !RELS.includes(rel)) return;
+    const note = prompt("说明（replaces 必须写条件，例如「条件：无需训练」）：","");
+    pushUndo();
+    S[p].edges.push({id:uid("e"), from, to, rel, note:note||""});
+  } else {
+    const rel = prompt("连线类型（uses / fails_when）：","uses");
+    if(!rel) return;
+    pushUndo();
+    S[p].edges.push({id:uid("e"), from, to, rel:RELS.includes(rel)?rel:"uses", note:""});
+  }
+  renderAll();
+}
+
+/* ============================ 键盘操作 ============================ */
+let LINKMODE = null;
+
+function cur(){ return (SEL.pane && SEL.id) ? byId(SEL.pane, SEL.id) : null; }
+
+function status(msg){
+  const el = document.getElementById("status");
+  if(!el) return;
+  el.textContent = msg;
+  clearTimeout(status._t);
+  status._t = setTimeout(()=>{ el.textContent = defaultStatus(); }, 5000);
+}
+function defaultStatus(){
+  const n = cur();
+  if(!n) return "就绪 · 方向键选节点";
+  return `${SEL.pane} · ${n.id} ${n.title}`;
+}
+
+function showTab(k){
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on", x.dataset.tab===k));
+  const M2 = {detail:"#pDetail", ai:"#pAI", dsh:"#pDSH", help:"#pHelp"};
+  Object.keys(M2).forEach(kk=>{
+    const el = document.querySelector(M2[kk]);
+    if(el) el.classList.toggle("on", kk===k);
+  });
+}
+
+function selectNode(p, id, pan){
+  if(!id) return;
+  SEL = {pane:p, id:id};
+  renderAll(); renderDetail();
+  const n = byId(p,id);
+  if(n && pan !== false){
+    const svg = document.getElementById("svg"+p);
+    const r = svg.getBoundingClientRect();
+    if(r.width < 10) return;
+    const sx = (n.x+NW/2)*V[p].k + V[p].x;
+    const sy = (n.y+NH/2)*V[p].k + V[p].y;
+    const m = 70;
+    if(sx < m || sx > r.width-m || sy < m || sy > r.height-m){
+      V[p].x += r.width/2 - sx;
+      V[p].y += r.height/2 - sy;
+      applyView(p); persist();
+    }
+  }
+  status(defaultStatus());
+  startStatePoll();
+  loadDocs();
+}
+
+function navDir(dir){
+  const p = SEL.pane || "L";
+  const nodes = S[p].nodes;
+  if(!nodes.length){ status("这个画布还是空的，按 N 新建"); return; }
+  const c = cur();
+  if(!c){ selectNode(p, nodes[0].id); return; }
+  const cx = c.x+NW/2, cy = c.y+NH/2;
+  const vec = {left:[-1,0], right:[1,0], up:[0,-1], down:[0,1]}[dir];
+  let best=null, bs=Infinity;
+  nodes.forEach(n=>{
+    if(n.id===c.id) return;
+    const dx=(n.x+NW/2)-cx, dy=(n.y+NH/2)-cy;
+    const main = dx*vec[0] + dy*vec[1];
+    if(main <= 8) return;
+    const side = Math.abs(dx*vec[1] - dy*vec[0]);
+    const score = main + side*1.7;
+    if(score < bs){ bs=score; best=n; }
+  });
+  if(best) selectNode(p, best.id);
+}
+
+function cycleNode(step){
+  const p = SEL.pane || "L";
+  const nodes = S[p].nodes;
+  if(!nodes.length) return;
+  let i = nodes.findIndex(n=>n.id===SEL.id);
+  if(i < 0) i = step > 0 ? -1 : 0;
+  const j = (i + step + nodes.length) % nodes.length;
+  selectNode(p, nodes[j].id);
+}
+
+function switchPane(){
+  const p = (SEL.pane === "R") ? "L" : "R";
+  const nodes = S[p].nodes;
+  if(!nodes.length){ SEL={pane:p,id:null}; renderAll(); status("切到 "+p+"（空）"); return; }
+  selectNode(p, nodes[0].id);
+}
+
+function moveNode(dx, dy){
+  const n = cur(); if(!n) return;
+  pushUndo();
+  n.x += dx; n.y += dy;
+  renderPane(SEL.pane); renderDetail(); persist();
+  status(`移动到 (${n.x}, ${n.y})`);
+}
+
+function editTitle(){
+  const n = cur(); if(!n){ status("先选一个节点"); return; }
+  const t = prompt("标题：", n.title);
+  if(t === null) return;
+  pushUndo(); n.title = t.trim() || n.title;
+  renderAll(); renderDetail(); status("已改名");
+}
+
+function addNodeKbd(){
+  const p = SEL.pane || "L";
+  const t = prompt("新节点标题（画布 "+p+"）：", "");
+  if(!t || !t.trim()) return;
+  pushUndo();
+  const b = cur();
+  const n = {id:uid(p==="L"?"N":"S"), title:t.trim(), kind:p==="L"?"misc":"design",
+             x:b?b.x+NW+70:80, y:b?b.y:80, fails:[], note:"", params:[]};
+  if(p==="R") n.refs=[];
+  S[p].nodes.push(n);
+  selectNode(p, n.id); status("已新建 "+n.id);
+}
+
+function delNode(){
+  const n = cur(); if(!n){ status("先选一个节点"); return; }
+  pushUndo();
+  const p = SEL.pane, id = n.id;
+  S[p].nodes = S[p].nodes.filter(x=>x.id!==id);
+  S[p].edges = S[p].edges.filter(e=>e.from!==id && e.to!==id);
+  if(p==="L") S.R.nodes.forEach(x=>{ x.refs=(x.refs||[]).filter(r=>r!==id); });
+  SEL = {pane:null, id:null};
+  renderAll(); renderDetail();
+  status("已删除 "+id+"（Ctrl+Z 可撤销）");
+}
+
+function startLink(){
+  const n = cur(); if(!n){ status("先选源节点，再按 L"); return; }
+  LINKMODE = {pane:SEL.pane, from:n.id};
+  document.body.classList.add("linkmode");
+  status("连线模式：方向键/Tab 选目标，Enter 确认，Esc 取消");
+}
+
+function finishLink(){
+  if(!LINKMODE) return;
+  const p = LINKMODE.pane, from = LINKMODE.from;
+  const n = cur();
+  document.body.classList.remove("linkmode");
+  if(!n || n.id === from){ LINKMODE=null; status("连线取消（没选到不同节点）"); return; }
+  const to = n.id;
+  LINKMODE = null;
+  const keys = "i=improves  r=replaces  c=combines  q=requires  f=fails_when  u=uses";
+  const raw = prompt("关系类型（"+keys+"）", p==="L" ? "improves" : "uses");
+  if(!raw){ status("连线取消"); return; }
+  const map = {i:"improves", r:"replaces", c:"combines", q:"requires", f:"fails_when", u:"uses"};
+  let rel = map[raw.trim().toLowerCase()] || raw.trim();
+  if(!RELS.includes(rel)){ status("类型无效："+raw); return; }
+  let note = "";
+  if(rel === "replaces"){
+    note = prompt("replaces 必须写替代条件（例如：条件：无需训练 n<1e5）", "条件：");
+    if(!note || !note.trim()){ status("replaces 缺条件，已取消"); return; }
+  }
+  pushUndo();
+  S[p].edges.push({id:uid("e"), from, to, rel, note:note||""});
+  renderAll(); renderDetail();
+  status(`${from} -${rel}-> ${to} 已建立`);
+}
+
+function zoomBy(f){
+  const p = SEL.pane || "L";
+  V[p].k = Math.min(2.6, Math.max(0.25, V[p].k * f));
+  applyView(p); persist();
+  status("缩放 " + Math.round(V[p].k*100) + "%");
+}
+function resetView(){
+  const p = SEL.pane || "L";
+  V[p] = {x:10, y:0, k:0.8};
+  applyView(p); persist(); status("视图已复位");
+}
+
+window.addEventListener("keydown", ev=>{
+  const t = ev.target;
+  if(t && t.matches && t.matches("input,textarea,select")){
+    if(ev.key === "Escape") t.blur();
+    return;
+  }
+  const K = ev.key;
+  const cmd = ev.ctrlKey || ev.metaKey;
+
+  if(cmd && K.toLowerCase() === "z"){ ev.preventDefault(); doUndo(); status("撤销"); return; }
+  if(cmd && K.toLowerCase() === "y"){ ev.preventDefault(); doRedo(); status("重做"); return; }
+  if(cmd && K.toLowerCase() === "s"){ ev.preventDefault(); exportJSON(); return; }
+  if(cmd && K === "Enter"){ ev.preventDefault(); runCheck(); return; }
+
+  if(K === "1"){ showTab("detail"); return; }
+  if(K === "2"){ showTab("ai"); return; }
+  if(K === "3"){ showTab("help"); return; }
+  if(K === "4"){ showTab("dsh"); return; }
+  if(K === "?"){ showTab("help"); return; }
+  if(K === "/"){ ev.preventDefault(); document.getElementById("q").focus(); return; }
+
+  if(K.indexOf("Arrow") === 0){
+    ev.preventDefault();
+    const d = {ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1]}[K];
+    const nd = {ArrowLeft:"left", ArrowRight:"right", ArrowUp:"up", ArrowDown:"down"}[K];
+    if(ev.shiftKey) moveNode(d[0]*10, d[1]*10);
+    else if(ev.altKey) moveNode(d[0], d[1]);
+    else navDir(nd);
+    return;
+  }
+  if(K === "Tab"){ ev.preventDefault(); cycleNode(ev.shiftKey ? -1 : 1); return; }
+  if(K === "[" || K === "]"){ ev.preventDefault(); switchPane(); return; }
+  if(K === "+" || K === "="){ ev.preventDefault(); zoomBy(1.12); return; }
+  if(K === "-" || K === "_"){ ev.preventDefault(); zoomBy(0.89); return; }
+  if(K === "0"){ ev.preventDefault(); resetView(); return; }
+
+  if(K === "Enter"){
+    ev.preventDefault();
+    if(LINKMODE){ finishLink(); return; }
+    showTab("detail");
+    const f = document.getElementById("edTitle");
+    if(f){ f.focus(); f.select && f.select(); }
+    return;
+  }
+  if(K === "Escape"){
+    if(LINKMODE){ LINKMODE=null; document.body.classList.remove("linkmode"); status("连线取消"); return; }
+    SEL = {pane:null, id:null}; renderAll(); renderDetail(); status("取消选中");
+    return;
+  }
+  const low = K.toLowerCase();
+  if(low === "e"){ editTitle(); return; }
+  if(low === "n"){ addNodeKbd(); return; }
+  if(low === "d" || K === "Delete" || K === "Backspace"){ delNode(); return; }
+  if(low === "l" || low === "c"){ startLink(); return; }
+});
+
+function doUndo(){
+  if(!UNDO.length) return;
+  REDO.push(snapshot());
+  restore(UNDO.pop());
+  renderDetail();
+}
+function doRedo(){
+  if(!REDO.length) return;
+  UNDO.push(snapshot());
+  restore(REDO.pop());
+  renderDetail();
+}
+
+/* ============================ 详情面板 ============================ */
+function renderDetail(){
+  const box = $("#pDetail");
+  if(!SEL.pane || !SEL.id){ box.innerHTML = `<div class="empty">
+        <div style="font-size:26px;opacity:.25;margin-bottom:14px">◍</div>
+        点一个节点查看详情<br>方向键导航，Enter 打开标题<br>
+        <span style="font-size:11px;opacity:.75">按 <kbd>?</kbd> 看全部快捷键</span>
+      </div>`; return; }
+  const p = SEL.pane, n = byId(p, SEL.id);
+  if(!n){ box.innerHTML = `<div class="empty">节点已删除</div>`; return; }
+
+  const kinds = p==="L" ? ["stat","near","recon","prob","sup","misc"] : ["design"];
+  let h = `<div class="kv"><b>${esc(n.title)}</b><span class="chip">${esc(n.id)}</span></div>`;
+  h += `<label>标题</label><input type="text" id="edTitle" value="${esc(n.title)}">`;
+  h += `<label>类型</label><select id="edKind">` +
+       kinds.map(k=>`<option value="${k}" ${n.kind===k?"selected":""}>${k}</option>`).join("") + `</select>`;
+  h += `<label>失效条件（每行一条 · 左图必填）</label><textarea id="edFails" rows="4">${esc((n.fails||[]).join("\n"))}</textarea>`;
+  h += `<label>说明 / 判据</label><textarea id="edNote" rows="4">${esc(n.note||"")}</textarea>`;
+  h += `<label>L3 参数（key=value，每行一条）</label><textarea id="edParams" rows="3">${esc((n.params||[]).join("\n"))}</textarea>`;
+
+  if(p==="R"){
+    h += `<label>关联左图技术（逗号分隔 id）</label>`;
+    h += `<input type="text" id="edRefs" value="${esc((n.refs||[]).join(", "))}">`;
+    h += `<div class="hint" style="margin-top:4px">例：<code>T03, T05</code></div>`;
+  }
+
+  const es = S[p].edges.filter(e=>e.from===n.id || e.to===n.id);
+  h += `<hr><label>关联边（${es.length}）</label>`;
+  if(!es.length) h += `<div class="hint">无。选中本节点后按住 Shift 拖到另一节点即可建关系。</div>`;
+  es.forEach(e=>{
+    const other = e.from===n.id ? e.to : e.from;
+    const dir = e.from===n.id ? "→" : "←";
+    const col = RCOLOR[e.rel]||"#999";
+    h += `<div class="kv" style="font-size:11.5px">
+      <span class="chip" style="color:${col};border-color:${col}33">${esc(e.rel)}</span>
+      ${dir} ${esc(other)}
+      <span style="flex:1"></span>
+      <button class="sm" data-deledge="${esc(e.id)}">删除</button></div>`;
+    if(e.note) h += `<div class="hint" style="margin:-2px 0 6px 2px">${esc(e.note)}</div>`;
+  });
+
+  const issues = checkNode(p,n);
+  if(issues.length){
+    h += `<hr><label>检查</label>`;
+    issues.forEach(i=> h += `<div class="warnbox">${esc(i)}</div>`);
+  }
+
+  h += `<hr><div class="row"><button class="primary" id="edSave">保存修改</button>
+        <button class="fix" id="edDel">删除</button></div>`;
+  box.innerHTML = h;
+
+  $("#edSave").onclick = ()=>{
+    pushUndo();
+    n.title = $("#edTitle").value.trim() || n.title;
+    n.kind = $("#edKind").value;
+    n.fails = $("#edFails").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    n.note = $("#edNote").value;
+    n.params = $("#edParams").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    if(p==="R"){
+      n.refs = $("#edRefs").value.split(",").map(s=>s.trim()).filter(Boolean);
+    }
+    renderAll(); renderDetail();
+  };
+  $("#edDel").onclick = ()=>{
+    if(!confirm("删除该节点？")) return;
+    pushUndo();
+    S[p].nodes = S[p].nodes.filter(x=>x.id!==n.id);
+    S[p].edges = S[p].edges.filter(e=>e.from!==n.id && e.to!==n.id);
+    if(p==="L") S.R.nodes.forEach(x=>{ x.refs=(x.refs||[]).filter(r=>r!==n.id); });
+    SEL={pane:null,id:null};
+    renderAll(); renderDetail();
+  };
+  box.querySelectorAll("[data-deledge]").forEach(b=>{
+    b.onclick = ()=>{
+      pushUndo();
+      S[p].edges = S[p].edges.filter(e=>e.id!==b.dataset.deledge);
+      renderAll(); renderDetail();
+    };
+  });
+}
+
+function checkNode(p,n){
+  const out=[];
+  if(!(n.fails||[]).length) out.push("失效条件为空：等于宣称它不会坏。");
+  if(p==="L" && !(n.note||"").trim()) out.push("缺文献/来源说明。");
+  if(p==="R" && !(n.note||"").trim()) out.push("缺判据/说明：这个节点为什么这样设计？");
+  if(p==="R" && (n.refs||[]).length===0) out.push("未关联左图技术：设计没有依据先验。");
+  (n.refs||[]).forEach(r=>{ if(!byId("L",r)) out.push(`关联的技术 ${r} 在左图不存在（悬空引用）。`); });
+  return out;
+}
+
+/* ============================ 全图检查 ============================ */
+function runCheck(){
+  let issues=[];
+  S.L.nodes.forEach(n=> checkNode("L",n).forEach(m=>issues.push({p:"L",id:n.id,msg:m})));
+  S.R.nodes.forEach(n=> checkNode("R",n).forEach(m=>issues.push({p:"R",id:n.id,msg:m})));
+  S.L.edges.forEach(e=>{
+    if(e.rel==="replaces" && !(e.note||"").trim())
+      issues.push({p:"L",id:e.from,msg:`边 ${e.from}→${e.to} 是 replaces 但没写替代条件。`});
+    if(!byId("L",e.from)||!byId("L",e.to))
+      issues.push({p:"L",id:e.from,msg:`边 ${e.from}→${e.to} 端点不存在。`});
+  });
+  const failsEdges = S.L.edges.filter(e=>e.rel==="fails_when").length;
+  const box = $("#pDetail");
+  let h = `<h3 style="margin:0 0 8px;font-size:13px">检查结果</h3>`;
+  h += `<div class="hint">节点 ${S.L.nodes.length}+${S.R.nodes.length} · 边 ${S.L.edges.length}+${S.R.edges.length} · `
+     + `共享失效边 ${failsEdges} 条</div>`;
+  if(!issues.length) h += `<div class="okbox">没有硬性问题。</div>`;
+  else {
+    h += `<div class="warnbox">${issues.length} 个问题</div>`;
+    issues.forEach(i=>{
+      h += `<div class="kv" style="font-size:11.5px;cursor:pointer" data-jump="${i.p}:${i.id}">
+        <span class="chip">${i.p}</span> <b>${esc(i.id)}</b>
+        <span style="flex:1"></span></div>
+        <div class="hint" style="margin:-2px 0 8px 2px">${esc(i.msg)}</div>`;
+    });
+  }
+  $("#pDetail").innerHTML = h;
+  document.querySelectorAll("[data-jump]").forEach(el=>{
+    el.onclick = ()=>{
+      const [p,id] = el.dataset.jump.split(":");
+      SEL={pane:p,id}; renderAll(); renderDetail();
+      const n = byId(p,id);
+      if(n){ V[p].x = 200 - n.x*V[p].k; V[p].y = 200 - n.y*V[p].k; applyView(p); }
+    };
+  });
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab==="detail"));
+  $("#pDetail").classList.add("on"); $("#pAI").classList.remove("on"); $("#pHelp").classList.remove("on");
+}
+
+/* ============================ AI 辅助 ============================ */
+function buildContext(){
+  const L = S.L.nodes, R = S.R.nodes;
+  const ln = L.map(n=>{
+    const f = (n.fails||[]).join("；") || "（未填）";
+    return `- ${n.id} | ${n.title} | ${n.kind} | 失效：${f} | 来源：${n.note||"-"}`;
+  }).join("\n");
+  const le = S.L.edges.map(e=>`- ${e.from} -${e.rel}-> ${e.to}${e.note?"："+e.note:""}`).join("\n");
+  const rn = R.map(n=>{
+    const refs=(n.refs||[]).join(", ")||"-";
+    return `- ${n.id} | ${n.title} | 关联技术：${refs} | 失效：${(n.fails||[]).join("；")||"-"} | 说明：${n.note||"-"}`;
+  }).join("\n");
+  const re = S.R.edges.map(e=>`- ${e.from} -${e.rel}-> ${e.to}${e.note?"："+e.note:""}`).join("\n");
+
+  return `# 算法设计上下文（AI 只出 patch，不出方案）
+
+## 硬约束
+1. 不得给出完整方案。输出只能是 JSON patch，由人逐条裁决。
+2. 每条建议必须给代价（cost）与验证探针（probe）。
+3. 必须做缺口交付：certain / uncertain / need_from_you（≥2 条）。
+4. 不得重复已有节点；若认为已有技术适用，只能提出 link（把技术关联到设计节点）。
+5. 信息不足时输出空 ops，只写 gaps —— 这比编方案有用。
+
+## 左图：技术图谱（全局先验）
+${ln}
+
+### 关系边
+${le || "（无）"}
+
+## 右图：我的设计（局部约束）
+${rn}
+
+### 数据流边
+${re || "（无）"}
+
+## 你要做的
+审查右图每个节点的技术选择：指出缺失的替代方案、被误判的失效条件、
+以及「换了方法但踩同一个坑」的情况（用 fails_when 边标注）。
+
+## 输出格式（严格 JSON）
+{"ops":[
+ {"op":"add_node","pane":"L","id":"T17","title":"...","kind":"recon","note":"文献","fails":["...","..."]},
+ {"op":"add_edge","pane":"L","from":"T17","to":"T11","rel":"improves","note":"..."},
+ {"op":"annotate","pane":"L","target":"T11","field":"fails","value":"..."},
+ {"op":"link","design":"S7","tech":"T17"}
+],"gaps":{"certain":[],"uncertain":[],"need_from_you":["",""]}}
+
+校验规则：add_node 必须含 fails（≥1）；add_edge.rel ∈ ${RELS.join("/")}，
+replaces 必须含 note；link 的两端必须已存在；gaps.need_from_you ≥ 2。`;
+}
+
+function parsePatch(){
+  const raw = $("#patchIn").value.trim();
+  const box = $("#ops");
+  box.innerHTML = "";
+  if(!raw){ box.innerHTML = `<div class="warnbox">先粘贴 patch JSON。</div>`; return; }
+  let obj;
+  try{ obj = JSON.parse(raw.replace(/^```json\s*/i,"").replace(/```$/,"")); }
+  catch(e){ box.innerHTML = `<div class="warnbox">JSON 解析失败：${esc(e.message)}</div>`; return; }
+
+  const ops = obj.ops || [];
+  if(!ops.length){
+    box.innerHTML = `<div class="warnbox">ops 为空。AI 选择了只交缺口交付——这是允许的，看下面的 gaps。</div>`;
+  }
+  ops.forEach((op, i)=>{
+    const v = validateOp(op);
+    const el = document.createElement("div");
+    el.className = "op " + (v.ok ? "" : "rej");
+    el.innerHTML = `<div class="t">${esc(opTitle(op))}</div>
+      <div class="m">${v.ok ? "通过校验" : esc(v.msg)}</div>
+      ${op.note?`<div class="m">备注：${esc(op.note)}</div>`:""}
+      <div class="act">
+        <button class="sm" data-act="acc" ${v.ok?"":"disabled"}>采纳</button>
+        <button class="sm" data-act="rej">驳回</button>
+      </div>`;
+    el.querySelector('[data-act=acc]').onclick = ()=>{
+      pushUndo(); applyOp(op); el.className="op acc done";
+      el.querySelectorAll("button").forEach(b=>b.disabled=true);
+      renderAll();
+    };
+    el.querySelector('[data-act=rej]').onclick = ()=>{
+      el.className="op rej done";
+      el.querySelectorAll("button").forEach(b=>b.disabled=true);
+    };
+    box.appendChild(el);
+  });
+
+  const g = obj.gaps || {};
+  if(g.need_from_you){
+    const n = (g.need_from_you||[]).length;
+    let gh = `<div class="${n>=2?"okbox":"warnbox"}"><b>缺口交付</b><br>`;
+    if(g.certain) gh += `确定：${esc((g.certain||[]).join("；"))}<br>`;
+    if(g.uncertain) gh += `不确定：${esc((g.uncertain||[]).join("；"))}<br>`;
+    gh += `需要我提供：${esc((g.need_from_you||[]).join("；")||"（无）")}`;
+    if(n<2) gh += `<br><b>need_from_you 少于 2 条</b>：AI 给了"完备答案"，这通常意味着判断已被它代做。`;
+    gh += `</div>`;
+    box.insertAdjacentHTML("beforeend", gh);
+  }
+}
+
+function opTitle(op){
+  const k = op.op;
+  if(k==="add_node") return `新增节点 ${op.id} · ${op.title||""}`;
+  if(k==="add_edge") return `新增关系 ${op.from} -${op.rel}-> ${op.to}`;
+  if(k==="annotate") return `标注 ${op.target}.${op.field}`;
+  if(k==="link") return `建立映射 ${op.design} ⇢ ${op.tech}`;
+  return k || "?";
+}
+
+function validateOp(op){
+  const k = op.op;
+  if(k==="add_node"){
+    const p = op.pane === "L" ? "L" : "R";
+    if(!op.id || !op.title) return {ok:false, msg:"缺 id 或 title"};
+    if(byId(p, op.id)) return {ok:false, msg:`节点 ${op.id} 已存在`};
+    if(p==="L" && !(op.fails||[]).length) return {ok:false, msg:"fails 为空：不允许「不会坏」的技术"};
+    return {ok:true};
+  }
+  if(k==="add_edge"){
+    const p = op.pane === "L" ? "L" : "R";
+    if(!RELS.includes(op.rel)) return {ok:false, msg:`rel 非法：${op.rel}`};
+    if(!byId(p,op.from) || !byId(p,op.to)) return {ok:false, msg:"端点不存在"};
+    if(op.rel==="replaces" && !(op.note||"").trim()) return {ok:false, msg:"replaces 缺 note（替代条件）"};
+    return {ok:true};
+  }
+  if(k==="annotate"){
+    const p = op.pane === "L" ? "L" : "R";
+    if(!byId(p,op.target)) return {ok:false, msg:`target ${op.target} 不存在`};
+    if(!["fails","note","params"].includes(op.field)) return {ok:false, msg:"field 只允许 fails/note/params"};
+    if(!op.value) return {ok:false, msg:"value 为空"};
+    return {ok:true};
+  }
+  if(k==="link"){
+    if(!byId("R",op.design)) return {ok:false, msg:`设计节点 ${op.design} 不存在`};
+    if(!byId("L",op.tech)) return {ok:false, msg:`技术节点 ${op.tech} 不存在`};
+    return {ok:true};
+  }
+  return {ok:false, msg:`未知 op：${k}`};
+}
+
+function applyOp(op){
+  const k = op.op;
+  if(k==="add_node"){
+    const p = op.pane === "L" ? "L" : "R";
+    const n = {id:op.id, title:op.title, kind:op.kind || (p==="L"?"misc":"design"),
+               x:op.x!=null?op.x:(p==="L"?700:100), y:op.y!=null?op.y:(60+S[p].nodes.length*84),
+               fails:op.fails||[], note:op.note||"", params:op.params||[]};
+    if(p==="R") n.refs=[];
+    S[p].nodes.push(n);
+  } else if(k==="add_edge"){
+    const p = op.pane === "L" ? "L" : "R";
+    S[p].edges.push({id:uid("e"), from:op.from, to:op.to, rel:op.rel, note:op.note||""});
+  } else if(k==="annotate"){
+    const p = op.pane === "L" ? "L" : "R";
+    const n = byId(p,op.target); if(!n) return;
+    if(op.field==="fails"){ n.fails = n.fails||[]; if(!n.fails.includes(op.value)) n.fails.push(op.value); }
+    else if(op.field==="note"){ n.note = (n.note? n.note+" · ":"") + op.value; }
+    else { n.params = n.params||[]; if(!n.params.includes(op.value)) n.params.push(op.value); }
+  } else if(k==="link"){
+    const n = byId("R",op.design); if(!n) return;
+    n.refs = n.refs||[];
+    if(!n.refs.includes(op.tech)) n.refs.push(op.tech);
+  }
+}
+
+/* ============================ DSH 桥 ============================ */
+function dshBase(){
+  const el = document.getElementById("dsUrl");
+  return (el ? el.value : "http://127.0.0.1:8777").replace(/\/+$/, "");
+}
+function dshLog(msg){
+  const el = document.getElementById("dsLog");
+  if(!el) return;
+  const t = new Date().toLocaleTimeString();
+  const prev = el.textContent ? el.textContent.split("\n").slice(0, 7).join("\n") : "";
+  el.textContent = `[${t}] ${msg}` + (prev ? "\n" + prev : "");
+}
+async function dshSend(){
+  const url = dshBase() + "/context";
+  const payload = {ts:new Date().toISOString(), app:"DSH Atlas", request:"review",
+                   L:S.L, R:S.R, contextText: buildContext()};
+  try{
+    const r = await fetch(url, {method:"POST", headers:{"content-type":"application/json"},
+                                body: JSON.stringify(payload)});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.msg || ("HTTP " + r.status));
+    __lastPatch = "";
+    document.getElementById("patchIn").value = "";
+    dshLog("已发送 " + (j.bytes || 0) + " B。现在让 DSH 读 .dsh/outbox/context.md");
+  }catch(e){
+    dshLog("发送失败：" + e.message + "  → 先 python bridge/serve.py");
+  }
+}
+let __lastPatch = "";
+async function dshPull(silent){
+  try{
+    const r = await fetch(dshBase() + "/patch", {cache:"no-store"});
+    if(r.status === 404){ if(!silent) dshLog("inbox 为空：DSH 还没写 patch"); return; }
+    const t = await r.text();
+    if(!t.trim()){ if(!silent) dshLog("patch 为空"); return; }
+    if(t === __lastPatch){ if(!silent) dshLog("patch 未变化"); return; }
+    __lastPatch = t;
+    document.getElementById("patchIn").value = t;
+    parsePatch();
+    if(!silent) showTab("ai");
+    dshLog("已载入 patch · " + t.length + " 字符 → 去 AI 面板裁决");
+  }catch(e){
+    if(!silent) dshLog("拉取失败：" + e.message);
+  }
+}
+
+/* ============================ DSH headless ============================ */
+let TERM_BUF = "", DSH_SID = null, DSH_BUSY = false, DSH_LAST_STATE = "";
+
+function dshBase(){
+  const el = document.getElementById("dsUrl");
+  return (el ? el.value : "http://127.0.0.1:8777").replace(/\/+$/, "") || "http://127.0.0.1:8777";
+}
+
+function termAppend(t){
+  TERM_BUF += t;
+  if(TERM_BUF.length > 60000) TERM_BUF = "…（已截断）…\n" + TERM_BUF.slice(-60000);
+  const el = document.getElementById("term");
+  if(!el) return;
+  el.textContent = TERM_BUF;
+  el.scrollTop = el.scrollHeight;
+  extractPatch(TERM_BUF);
+}
+
+function dshState(msg){
+  const el = document.getElementById("dshState");
+  if(el) el.textContent = msg;
+}
+
+function dshHandle(ev){
+  const t = ev.type;
+  if(t === "session"){ DSH_SID = ev.sessionId; }
+  else if(t === "text"){ termAppend(ev.text || ""); }
+  else if(t === "final"){ termAppend("\n"); }
+  else if(t === "error"){ termAppend("\n[error] " + (ev.message || "") + "\n"); }
+  else if(t === "status" && ev.usage){
+    DSH_LAST_STATE = "in " + ev.usage.inputTokens + " / out " + ev.usage.outputTokens;
+  }
+  dshState((DSH_BUSY ? "运行中 · " : "就绪 · ") +
+           (DSH_SID ? "会话 " + DSH_SID.slice(0, 18) + "… " : "无会话 ") + DSH_LAST_STATE);
+}
+
+async function dshAsk(task, opts){
+  opts = opts || {};
+  if(DSH_BUSY){ dshState("上一次还没跑完"); return; }
+  if(!task || !task.trim()) return;
+  DSH_BUSY = true;
+  if(opts.clear) TERM_BUF = "";
+  termAppend("❯ " + task + "\n");
+  dshState("运行中…");
+
+  try{
+    const resp = await fetch(dshBase() + "/dsh/ask", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({task, session_id: opts.fresh ? null : DSH_SID,
+                            extra_args: opts.extra || null})
+    });
+    if(!resp.ok || !resp.body) throw new Error("HTTP " + resp.status);
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder("utf-8");
+    let buf = "";
+    for(;;){
+      const {value, done} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, {stream:true});
+      let i;
+      while((i = buf.indexOf("\n\n")) >= 0){
+        const block = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        for(const line of block.split("\n")){
+          if(!line.startsWith("data:")) continue;
+          try{ dshHandle(JSON.parse(line.slice(5).trim())); }catch(e){}
+        }
+      }
+    }
+  }catch(e){
+    termAppend("\n[bridge] " + e.message + "\n");
+  }finally{
+    DSH_BUSY = false;
+    dshState(DSH_SID ? "就绪 · 会话 " + DSH_SID.slice(0,18) + "… " + DSH_LAST_STATE : "就绪 · 无会话");
+    if(opts.thenDocs) loadDocs();
+  }
+}
+
+function dshSend(){
+  const el = document.getElementById("dshIn");
+  if(!el) return;
+  const t = el.value.trim();
+  if(!t) return;
+  el.value = "";
+  dshAsk(t, {});
+}
+
+/* 把当前图同步到 state/graph.json，让 DSH 能读能改 */
+let STATE_TIMER = null;
+function syncState(){
+  if(STATE_TIMER) clearTimeout(STATE_TIMER);
+  STATE_TIMER = setTimeout(()=>{
+    const payload = {updated: new Date().toISOString(),
+                     L: S.L, R: S.R,
+                     note: "这是画布的当前状态；DSH 可读可改，前端每 2s 检查文件变化并重载"};
+    fetch(dshBase() + "/state", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify(payload)
+    }).catch(()=>{});
+  }, 800);
+}
+
+/* 前端轮询 state/graph.json，DSH 改了就重载 */
+let STATE_POLL = null;
+function startStatePoll(){
+  if(STATE_POLL) return;
+  STATE_POLL = setInterval(()=>{
+    fetch(dshBase() + "/state", {cache:"no-store"}).then(r=>{
+      if(!r.ok) return null;
+      return r.json();
+    }).then(j=>{
+      if(!j || !j.L || !j.R) return;
+      if(j.updated === S.__updated) return;
+      S.__updated = j.updated;
+      // 只有当内容与当前不同才覆盖（避免打断本地编辑）
+      if(JSON.stringify(j.L) !== JSON.stringify(S.L) ||
+         JSON.stringify(j.R) !== JSON.stringify(S.R)){
+        S.L = j.L; S.R = j.R;
+        renderAll();
+        dshState("已从 state/graph.json 重载（" + (j.updated || "") + "）");
+      }
+    }).catch(()=>{});
+  }, 2000);
+}
+
+/* 文档 */
+function loadDocs(){
+  fetch(dshBase() + "/docs").then(r=>r.json()).then(j=>{
+    const box = document.getElementById("dshDocs");
+    if(!box) return;
+    if(!j.docs || !j.docs.length){ box.textContent = "（docs/ 为空）"; return; }
+    box.innerHTML = j.docs.map(d =>
+      `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0">
+         <a href="#" data-doc="${d.name}" style="color:var(--accent)">${d.name}</a>
+         <span style="color:var(--dim2);font-size:11px">${d.mtime} · ${d.bytes}B</span>
+       </div>`).join("");
+    box.querySelectorAll("[data-doc]").forEach(a=>{
+      a.onclick = ev=>{
+        ev.preventDefault();
+        openDoc(a.dataset.doc);
+      };
+    });
+  }).catch(()=>{});
+}
+
+function openDoc(name){
+  fetch(dshBase() + "/docs/" + encodeURIComponent(name)).then(r=>r.text()).then(t=>{
+    const v = document.getElementById("dshDocView");
+    if(!v) return;
+    v.style.display = "block";
+    v.textContent = t;
+  }).catch(()=>{});
+}
+
+/* ============================ 导入导出 ============================ */
+function exportJSON(){
+  const data = JSON.stringify({meta:{app:"DSH Atlas",v:1,at:new Date().toISOString()}, L:S.L, R:S.R}, null, 2);
+  const blob = new Blob([data], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "kg-design.json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+
+function importJSON(file){
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const o = JSON.parse(fr.result);
+      if(!o.L || !o.R) throw new Error("缺 L 或 R");
+      pushUndo();
+      S.L=o.L; S.R=o.R;
+      renderAll(); renderDetail();
+    }catch(e){ alert("导入失败："+e.message); }
+  };
+  fr.readAsText(file, "utf-8");
+}
+
+/* ============================ 初始化 ============================ */
+function init(){
+  if(!loadState()){
+    const d = DATASETS[CUR].make();
+    S.L = d.L; S.R = d.R;
+  }
+  const dsSel = document.getElementById("dataset");
+  if(dsSel){
+    Object.entries(DATASETS).forEach(([k,v])=>{
+      const o = document.createElement("option");
+      o.value = k; o.textContent = v.label; dsSel.appendChild(o);
+    });
+    dsSel.value = CUR;
+    dsSel.onchange = ()=>{
+      CUR = dsSel.value;
+      pushUndo();
+      const d = DATASETS[CUR].make();
+      S.L = d.L; S.R = d.R; COLLAPSED = new Set();
+      SEL = {pane:null,id:null};
+      V = {L:{x:6,y:0,k:CUR==="sm"?0.46:0.75}, R:{x:-40,y:0,k:CUR==="sm"?0.72:0.85}};
+      renderAll(); renderDetail();
+      status("已切换到 " + DATASETS[CUR].label);
+    };
+  }
+  bindPane("L"); bindPane("R");
+  renderAll();
+
+  document.querySelectorAll(".tabs button").forEach(b=>{
+    b.onclick = ()=> showTab(b.dataset.tab);
+  });
+
+  $("#btnCheck").onclick = runCheck;
+  $("#btnUndo").onclick = doUndo;
+  $("#btnRedo").onclick = doRedo;
+  $("#btnSave").onclick = exportJSON;
+  $("#btnLoad").onclick = ()=> $("#fileIn").click();
+  $("#fileIn").onchange = e => { if(e.target.files[0]) importJSON(e.target.files[0]); };
+  $("#btnDemo").onclick = ()=>{
+    if(!confirm("用「" + DATASETS[CUR].label + "」的示例覆盖当前内容？")) return;
+    pushUndo();
+    const d = DATASETS[CUR].make(); S.L=d.L; S.R=d.R;
+    COLLAPSED = new Set(); SEL={pane:null,id:null};
+    renderAll(); renderDetail(); status("已重置为示例");
+  };
+  document.querySelectorAll("[data-add]").forEach(b=>{
+    b.onclick = ()=>{
+      const p = b.dataset.add;
+      const t = prompt("新节点标题：","");
+      if(!t || !t.trim()) return;
+      pushUndo();
+      const n = {id:uid(p==="L"?"N":"S"), title:t.trim(), kind:p==="L"?"misc":"design",
+                 x:100, y:60+S[p].nodes.length*84, fails:[], note:"", params:[]};
+      if(p==="R") n.refs=[];
+      S[p].nodes.push(n); SEL={pane:p,id:n.id};
+      renderAll(); renderDetail();
+    };
+  });
+
+  $("#q").addEventListener("input", e=>{
+    SEARCH = e.target.value.trim().toLowerCase();
+    renderAll();
+  });
+
+  const bSend = document.getElementById("dshSend");
+  if(bSend) bSend.onclick = dshSend;
+  const bIn = document.getElementById("dshIn");
+  if(bIn) bIn.addEventListener("keydown", ev=>{
+    if(ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)){ ev.preventDefault(); dshSend(); }
+  });
+
+  const bDoc = document.getElementById("dshDoc");
+  if(bDoc) bDoc.onclick = ()=>{
+    const task = [
+      "读取 state/graph.json（当前画布状态：L 技术图谱 / R 设计图，节点有 title/fails/note/refs，边有 rel/note）",
+      "在 docs/ 下新建 design.md，写一份可供人直接复用的技术文档",
+      "结构：1 目标与约束 2 技术选型与理由 3 每个设计节点的失效条件与探针 4 跨图映射表 5 未解决风险",
+      "写完在两个地方各报告一句：docs/design.md 已生成"
+    ].join("；");
+    dshAsk(task, {clear:true, thenDocs:true});
+  };
+
+  const bPatch = document.getElementById("dshPatch");
+  if(bPatch) bPatch.onclick = ()=>{
+    const task = [
+      "读取 state/graph.json",
+      "按 bridge/DSH.md 的规则审查右图设计节点",
+      "把结论写成 patch JSON 打印出来，格式为 @@PATCH {json} @@END"
+    ].join("；");
+    dshAsk(task, {clear:true});
+  };
+
+  const bReset = document.getElementById("dshReset");
+  if(bReset) bReset.onclick = ()=>{ DSH_SID = null; termAppend("\n[bridge] 已开新会话\n"); dshState("新会话"); };
+
+  const bRef = document.getElementById("dshDocsRefresh");
+  if(bRef) bRef.onclick = loadDocs;
+
+  const _s = document.getElementById("dsSend");
+  if(_s) _s.onclick = dshSend;
+  const _p = document.getElementById("dsPull");
+  if(_p) _p.onclick = ()=> dshPull(false);
+  setInterval(()=>{
+    const cb = document.getElementById("dsAuto");
+    if(cb && cb.checked) dshPull(true);
+  }, 3000);
+
+  $("#btnCtx").onclick = ()=>{
+    $("#ctxOut").value = buildContext();
+    $("#ctxOut").select();
+    document.execCommand && document.execCommand("copy");
+  };
+  $("#btnParse").onclick = parsePatch;
+
+  window.addEventListener("resize", ()=>renderAll());
+  renderDetail();
+
+  // URL hash：#sm / #tsad 切数据集；#ai / #dsh / #help 切面板
+  const h = (location.hash || "").replace("#", "");
+  if(DATASETS[h]){
+    CUR = h;
+    const d2 = DATASETS[CUR].make();
+    S.L = d2.L; S.R = d2.R; COLLAPSED = new Set(); SEL = {pane:null, id:null};
+    V = {L:{x:6, y:0, k:h==="sm"?0.46:0.75}, R:{x:-30, y:-20, k:h==="sm"?0.62:0.85}};
+    const ds2 = document.getElementById("dataset");
+    if(ds2) ds2.value = CUR;
+    renderAll(); renderDetail();
+    status("数据集：" + DATASETS[CUR].label);
+  } else if(["ai","dsh","help","detail"].includes(h)){
+    showTab(h);
+    if(h === "dsh") setTimeout(()=> dshPull(true), 400);
+  } else {
+    status(defaultStatus());
+  }
+}
+
+init();
+</script>
+</body>
+</html>
