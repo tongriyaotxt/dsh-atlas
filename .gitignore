@@ -1,0 +1,19 @@
+# 本地运行时（含临时 token、绝对路径、进程脚本）
+.dsh/
+
+# 应用状态（运行时生成，不入库）
+state/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 备份
+*.bak
